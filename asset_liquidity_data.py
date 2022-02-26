@@ -2,6 +2,16 @@ import requests
 import json
 import pandas as pd
 from datetime import datetime
+import sqlite3
+
+
+def put_data_in_db(
+    data: pd.DataFrame, db_name: str, table_name: str, if_exists: str = "append", chunk: int = 1000
+) -> None:
+    conn = sqlite3.connect(f"{db_name}.db")
+    data.to_sql(table_name, conn, if_exists=if_exists, chunksize=chunk)
+    conn.commit()
+
 
 astroport_factory_address = "terra1fnywlw4edny3vw44x04xd67uzkdqluymgreu7g"
 terraswap_factory_address = "terra1ulgw0td86nvs4wtpsc80thv6xelk76ut7a7apj"
@@ -47,17 +57,19 @@ def main():
         asset_astroport_liquidity.append(pair_liquidity)
 
     asset_data_sources = []
+    current_date = datetime.now()
     df = pd.DataFrame(
         {
-            "asset_symbols": asset_symbols,
+            "asset_symbol": asset_symbols,
             "asset_address": asset_addresses,
             "asset_terraswap_liquidity": asset_terraswap_liquidity,
             "asset_astroport_liquidity": asset_astroport_liquidity,
+            "datetime": current_date,
         }
     )
-    current_date = datetime.now()
-    formatted_date = current_date.strftime("%d_%m_%y")
-    df.to_csv(f"asset_liquidity_info/asset_liquidity_info_{formatted_date}.csv", index=False)
+    put_data_in_db(
+        data=df, db_name="asset_liquidity", table_name="liquidity", if_exists="append", chunk=1000
+    )
 
 
 if __name__ == "__main__":
